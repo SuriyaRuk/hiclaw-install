@@ -15,11 +15,11 @@
 **HiClaw 是一个开源的多 Agent 协作系统。让多个 Agent 在 Matrix 房间中协作，人类全程可见、随时可介入。 设计了 Manager - Workers 协作架构，人类可通过 Manager Agent 可协调多个 Worker Agents，完成复杂任务，从而加速实现 OPOC（一人一公司）和企业数字员工。**
 
 HiClaw 并不和其他 xxClaw 对标，HiClaw 是一个 Agent 协作系统。
-- 每个 Claw 支持用户自定义：可以是 OpenClaw，也可以是 Copaw、NanoClaw、ZeroClaw 或是企业自建的 Agent，目前预装的是 OpenClaw。
-- 引入了 Manger Claw 的角色：不用真人去管理每个干活的 Worker Claw，节省管理成本。
-- 使用 Element IM 客户端+Tuwunel IM 服务器（均基于 Matrix 实时通信协议），通信协议和原生的不同，节省钉钉、飞书 IM 的接入和企业内的审批成本，方便用户快速体验在 IM 的交互环境中体验模型服务的“爽感”，同时支持以 OpenClaw 原生的方式接入 IM。
-- 引入 MinIO 共享文件系统，用于 Agent 之间的信息共享，真人之间的协作，共同记忆也是基于共享文件系统。
-- 引入 Higress AI Gateway，入口和各类凭证风险降低了，减少了用户对原生龙虾在安全上的顾虑。
+- 🦞 每个 Claw 支持用户自定义：可以是 OpenClaw，也可以是 Copaw、NanoClaw、ZeroClaw 或是企业自建的 Agent，目前预装的是 OpenClaw。
+- 🧑‍💻 引入了 Manger Claw 的角色：不用真人去管理每个干活的 Worker Claw，节省管理成本。
+- 🎨 使用 Element IM 客户端+Tuwunel IM 服务器（均基于 Matrix 实时通信协议），通信协议和原生的不同，节省钉钉、飞书 IM 的接入和企业内的审批成本，方便用户快速体验在 IM 的交互环境中体验模型服务的“爽感”，同时支持以 OpenClaw 原生的方式接入 IM。
+- 📚 引入 MinIO 共享文件系统，用于 Agent 之间的信息共享，真人之间的协作，共同记忆也是基于共享文件系统。
+- ⛑️ 引入 Higress AI Gateway，入口和各类凭证风险降低了，减少了用户对原生龙虾在安全上的顾虑。
 
 ![架构](https://img.alicdn.com/imgextra/i4/O1CN01c1VlDE1zYZ46EW3OA_!!6000000006726-49-tps-9895-8231.webp)
 
@@ -75,7 +75,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object
 
 第五步：选择模型接口。百炼 Coding Plan 和百炼通用接口有所不同，这里我们选择 Coding Plan 接口。[购买Coding Plan](https://bailian.console.aliyun.com/cn-beijing/?source_channel=4qjGAvs1Pl&tab=coding-plan#/efm/index)
 
-第六步：选择模型系列。如果第五步中选择的是百炼 Coding Plan，您可以选择 qwen3.5-plus、GLM，等 Matrix room 建立起来后，还通过发送指令，让 Manager 切换其他到模型。
+第六步：选择模型系列。如果第五步中选择的是百炼 Coding Plan，您可以选择 qwen3.5-plus、GLM等，待 Matrix room 建立起来后，还可通过发送指令，让 Manager 切换其他到模型。
 
 第七步：开始测试 API 联通性，若测试成功，效果如下。
 ![测试](https://img.alicdn.com/imgextra/i4/O1CN0148wFGG1lYeWKd3Uat_!!6000000004831-2-tps-1752-600.png)
@@ -86,13 +86,17 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object
 
 第九步：GitHub 集成、Skills 注册中心、数据持久化、Docker 卷、Manager 工作空间，按回车键即可，均采用默认配置，无须手动配置。
 
-第十步：等待安装。安装完成。登录密码是自动生成的。
+第十步：选择 Manager Worker 运行时，目前支持 OpenClaw 和 Copaw，未来还将支持 NanoClaw、ZeroClaw 等。
+
+第十一步：等待安装。安装完成。登录密码是自动生成的。
 
 若希望通过移动端来访问和使用，则需要使用美区账号下载 FluffyChat/Element Mobile。（之所以采用这两个 IM，是因为他们是支持 Matrix 协议的）下载后，连接您的 Matrix 服务器地址，就能随时随地管理您的 Agent 团队。
 ![测试](https://img.alicdn.com/imgextra/i3/O1CN01Tl4T8q29HIHtPVSJL_!!6000000008042-2-tps-2372-1282.png)
 
 第十一步：浏览器中，输入 http://127.0.0.1:18088/#/login，登录 Element，输入用户名和密码，就可以玩龙虾了，告诉 Manager 创建 Worker 并分配任务。
 ![测试](https://img.alicdn.com/imgextra/i1/O1CN01C5NvV41P6msPuucrs_!!6000000001792-2-tps-2748-1224.png)
+
+⚠️ **注意：HiClaw 内置了 Higress AI 网关，负责模型 API Key 管理以及入口流量的安全管控。模型 API Key 的切换、新增，以及路由、域名、证书管理，均可在 Higress 控制台管理。**
 
 ## 升级
 

@@ -102,7 +102,7 @@ log "HOME set to ${HOME} (workspace files will be synced to MinIO)"
             if ! mc mirror "${WORKSPACE}/" "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/" --overwrite \
                 --exclude "openclaw.json" --exclude "AGENTS.md" --exclude "SOUL.md" \
                 --exclude "mcporter-servers.json" --exclude ".agents/**" \
-                --exclude ".openclaw/**" --exclude ".cache/**" --exclude ".npm/**" \
+                --exclude ".cache/**" --exclude ".npm/**" \
                 --exclude ".local/**" --exclude ".mc/**" 2>&1; then
                 log "WARNING: Local->Remote sync failed"
             fi

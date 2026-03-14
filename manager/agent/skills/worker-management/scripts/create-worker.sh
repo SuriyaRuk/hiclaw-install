@@ -23,7 +23,7 @@ source /opt/hiclaw/scripts/lib/base.sh
 WORKER_NAME=""
 MODEL_ID=""
 MCP_SERVERS=""
-WORKER_SKILLS="file-sync"
+WORKER_SKILLS="file-sync,mcporter"
 REMOTE_MODE=false
 ENABLE_FIND_SKILLS=false
 SKILLS_API_URL=""

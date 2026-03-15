@@ -41,16 +41,18 @@ bash /opt/hiclaw/agent/skills/worker-management/scripts/create-worker.sh \
 
 ### Runtime Selection
 
-| Runtime | Memory | Description |
-|---------|--------|-------------|
-| `openclaw` | ~500MB | Node.js container |
-| `copaw` | ~150MB | Python container, lightweight; console off by default, enable on demand via `enable-worker-console.sh` |
+| Runtime | Memory | Deployment | Description |
+|---------|--------|------------|-------------|
+| `openclaw` | ~500MB | local only | Node.js container |
+| `copaw` | ~150MB | local + remote (`--remote`) | Python container; with `--remote`, runs as native process on admin's machine instead |
 
 Default runtime is set by `HICLAW_DEFAULT_WORKER_RUNTIME` (chosen during installation). Only pass `--runtime` explicitly when:
 - The admin requests a specific runtime (e.g., "create a copaw worker" → `--runtime copaw`)
 - You recommend a specific runtime to solve a problem (see below)
 
-**Local environment access:** If the admin wants the Worker to operate on their local machine — e.g., "create a local worker", "create a worker in local mode", "I want a worker that can access my local environment", open a browser, run desktop apps, access local files, run local commands, or interact with the host OS — always recommend `--runtime copaw --remote`. This outputs a `pip install copaw-worker && copaw-worker ...` command that the admin runs directly on their machine, so the Worker process lives on the admin's host and has full local access. Ask the admin to confirm before proceeding.
+**Local environment access (--remote flag):** If the admin wants the Worker to run on their local machine — e.g., "create a local worker", "local mode", "access my local environment", open a browser, run desktop apps, access local files — add `--remote` to the create command. This works with copaw runtime only: `--runtime copaw --remote`. It outputs a `pip install copaw-worker && copaw-worker ...` command for the admin to run on their machine. The registry will have `"deployment": "remote"` for this Worker. Ask the admin to confirm before proceeding.
+
+**Important:** Without `--remote`, a copaw Worker is a normal container — just like openclaw. Do not confuse `--runtime copaw` (container) with `--runtime copaw --remote` (admin's local machine).
 
 > **Terminology note:** `--remote` means "remote from the Manager's perspective" (i.e., not a container managed by the Manager). From the admin's perspective, this is actually the **local** deployment — the Worker runs as a native process on the admin's own machine.
 

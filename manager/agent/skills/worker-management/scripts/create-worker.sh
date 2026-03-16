@@ -439,6 +439,15 @@ mc stat "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/SOUL.md" > /dev/null 2>&1 \
     || _fail "SOUL.md not found in MinIO after sync"
 mc stat "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/openclaw.json" > /dev/null 2>&1 \
     || _fail "openclaw.json not found in MinIO after sync"
+
+# Write Matrix password directly to MinIO (never touches Worker's local filesystem)
+# Worker reads it via mc cat on startup for E2EE re-login
+_tmp_pw="/tmp/matrix-pw-$$"
+echo -n "${WORKER_PASSWORD}" > "${_tmp_pw}"
+mc cp "${_tmp_pw}" "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/credentials/matrix/password" 2>/dev/null \
+    || log "  WARNING: Failed to write Matrix password to MinIO"
+rm -f "${_tmp_pw}"
+
 log "  MinIO sync verified"
 
 # Push Worker agent files from Manager image (AGENTS.md + file-sync skill)

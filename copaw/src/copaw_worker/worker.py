@@ -110,6 +110,13 @@ class Worker:
             console.print(f"[red]Failed to read config: {exc}[/red]")
             return False
 
+        # 3b. Re-login to Matrix to get fresh access token + device ID
+        #     Under E2EE, reusing the old access token (same device_id) with a
+        #     regenerated identity key causes other clients to reject key
+        #     distribution. Re-login creates a new device_id, matching the
+        #     Manager's behavior.
+        openclaw_cfg = self._matrix_relogin(openclaw_cfg)
+
         # 4. Set up CoPaw working directory
         self._copaw_working_dir = self.config.install_dir / self.worker_name / ".copaw"
         self._copaw_working_dir.mkdir(parents=True, exist_ok=True)
@@ -242,6 +249,86 @@ class Worker:
             # Clear refs so stop() doesn't double-call
             self._channel_manager = None
             self._runner = None
+
+    # ------------------------------------------------------------------
+    # Matrix re-login (E2EE device_id refresh)
+    # ------------------------------------------------------------------
+
+    def _matrix_relogin(self, openclaw_cfg: dict) -> dict:
+        """Re-login to Matrix to get a fresh access token and device ID.
+
+        Under E2EE, crypto state is not persisted across restarts. Reusing
+        the old access token keeps the same device_id but with a new identity
+        key, which causes other clients (Element Web) to reject key
+        distribution. A fresh login creates a new device_id, matching the
+        Manager's restart behavior.
+
+        The password is read directly from MinIO (never written to disk).
+        """
+        import json
+        import urllib.request
+        import urllib.error
+
+        # Read password directly from MinIO via mc cat (no disk I/O)
+        password_key = f"{self.sync._prefix}/credentials/matrix/password"
+        matrix_password = self.sync._cat(password_key)
+
+        if not matrix_password:
+            console.print(
+                "[dim]No Matrix password found in MinIO, skipping re-login "
+                "(E2EE may not work after restart)[/dim]"
+            )
+            return openclaw_cfg
+
+        matrix_password = matrix_password.strip()
+        matrix_cfg = openclaw_cfg.get("channels", {}).get("matrix", {})
+        homeserver = matrix_cfg.get("homeserver", "")
+
+        if not homeserver or not matrix_password:
+            return openclaw_cfg
+
+        login_url = f"{homeserver}/_matrix/client/v3/login"
+        login_body = json.dumps({
+            "type": "m.login.password",
+            "identifier": {"type": "m.id.user", "user": self.worker_name},
+            "password": matrix_password,
+        }).encode()
+
+        try:
+            req = urllib.request.Request(
+                login_url,
+                data=login_body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                login_resp = json.loads(resp.read())
+
+            new_token = login_resp.get("access_token", "")
+            new_device = login_resp.get("device_id", "")
+
+            if new_token:
+                openclaw_cfg["channels"]["matrix"]["accessToken"] = new_token
+                # Write updated config back to disk so bridge reads the new token
+                config_path = self.sync.local_dir / "openclaw.json"
+                with open(config_path, "w") as f:
+                    json.dump(openclaw_cfg, f, indent=2, ensure_ascii=False)
+                console.print(
+                    f"[green]Matrix re-login OK[/green] "
+                    f"(device: {new_device}, token: {new_token[:10]}...)"
+                )
+            else:
+                console.print(
+                    "[yellow]Matrix re-login returned no token, "
+                    "using existing access token[/yellow]"
+                )
+        except Exception as exc:
+            console.print(
+                f"[yellow]Matrix re-login failed: {exc} — "
+                f"using existing access token (E2EE may not work)[/yellow]"
+            )
+
+        return openclaw_cfg
 
     # ------------------------------------------------------------------
     # mc (MinIO Client) auto-install

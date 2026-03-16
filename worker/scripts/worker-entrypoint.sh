@@ -43,7 +43,7 @@ mkdir -p "${WORKSPACE}" "${HICLAW_ROOT}/shared"
 
 log "Pulling Worker config from centralized storage..."
 mc mirror "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/" "${WORKSPACE}/" --overwrite \
-    --exclude ".openclaw/matrix/**" --exclude ".openclaw/canvas/**"
+    --exclude ".openclaw/matrix/**" --exclude ".openclaw/canvas/**" --exclude "credentials/**"
 mc mirror "hiclaw/hiclaw-storage/shared/" "${HICLAW_ROOT}/shared/" --overwrite 2>/dev/null || true
 
 # Verify essential files exist, retry if sync is still in progress
@@ -58,7 +58,7 @@ while [ ! -f "${WORKSPACE}/openclaw.json" ] || [ ! -f "${WORKSPACE}/SOUL.md" ] \
     log "Waiting for config files to appear in MinIO (attempt ${RETRY}/6)..."
     sleep 5
     mc mirror "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/" "${WORKSPACE}/" --overwrite \
-        --exclude ".openclaw/matrix/**" --exclude ".openclaw/canvas/**" 2>/dev/null || true
+        --exclude ".openclaw/matrix/**" --exclude ".openclaw/canvas/**" --exclude "credentials/**" 2>/dev/null || true
 done
 
 # HOME is already set to WORKSPACE via docker run -e HOME=...
@@ -121,6 +121,7 @@ log "HOME set to ${HOME} (workspace files will be synced to MinIO)"
         if [ -n "${CHANGED}" ]; then
             if ! mc mirror "${WORKSPACE}/" "hiclaw/hiclaw-storage/agents/${WORKER_NAME}/" --overwrite \
                 --exclude "openclaw.json" --exclude "config/mcporter.json" --exclude "mcporter-servers.json" --exclude ".agents/**" \
+                --exclude "credentials/**" \
                 --exclude ".cache/**" --exclude ".npm/**" \
                 --exclude ".local/**" --exclude ".mc/**" --exclude "*.lock" \
                 --exclude ".openclaw/matrix/**" --exclude ".openclaw/canvas/**" 2>&1; then
@@ -186,5 +187,50 @@ log "Cleaned up any orphaned session write locks"
 # Crypto state is re-negotiated on startup; losing it only means re-establishing E2EE sessions
 rm -rf "${HOME}/.openclaw/matrix" 2>/dev/null || true
 log "Cleaned Matrix crypto storage (will re-establish E2EE sessions)"
+
+# ============================================================
+# Step 5b: Re-login to Matrix to get fresh access token + device ID
+# ============================================================
+# Under E2EE, reusing the old access token (same device_id) with a new
+# identity key (crypto storage was just wiped) causes other clients to
+# reject key distribution. Re-login creates a new device_id, matching
+# the Manager's behavior and allowing clean E2EE session establishment.
+MATRIX_PASSWORD_FILE="hiclaw/hiclaw-storage/agents/${WORKER_NAME}/credentials/matrix/password"
+MATRIX_PASSWORD=$(mc cat "${MATRIX_PASSWORD_FILE}" 2>/dev/null) || true
+if [ -n "${MATRIX_PASSWORD}" ]; then
+    # Read homeserver URL from openclaw.json (already pulled from MinIO)
+    MATRIX_SERVER=$(jq -r '.channels.matrix.homeserver // empty' "${WORKSPACE}/openclaw.json" 2>/dev/null)
+
+    if [ -n "${MATRIX_SERVER}" ]; then
+        log "Re-logging into Matrix to get fresh access token and device ID..."
+        LOGIN_RESP=$(curl -sf -X POST "${MATRIX_SERVER}/_matrix/client/v3/login" \
+            -H 'Content-Type: application/json' \
+            -d '{
+                "type": "m.login.password",
+                "identifier": {"type": "m.id.user", "user": "'"${WORKER_NAME}"'"},
+                "password": "'"${MATRIX_PASSWORD}"'"
+            }' 2>/dev/null) || true
+
+        NEW_TOKEN=$(echo "${LOGIN_RESP}" | jq -r '.access_token // empty' 2>/dev/null)
+        NEW_DEVICE=$(echo "${LOGIN_RESP}" | jq -r '.device_id // empty' 2>/dev/null)
+
+        if [ -n "${NEW_TOKEN}" ] && [ "${NEW_TOKEN}" != "null" ]; then
+            # Update openclaw.json with the fresh token
+            jq --arg token "${NEW_TOKEN}" '.channels.matrix.accessToken = $token' \
+                "${WORKSPACE}/openclaw.json" > /tmp/openclaw-relogin.json \
+                && mv /tmp/openclaw-relogin.json "${WORKSPACE}/openclaw.json"
+            log "Matrix re-login successful (new device: ${NEW_DEVICE}, token prefix: ${NEW_TOKEN:0:10}...)"
+        else
+            log "WARNING: Matrix re-login failed, using existing access token (E2EE may not work with Element Web)"
+            log "  Response: ${LOGIN_RESP}"
+        fi
+    else
+        log "WARNING: Missing homeserver URL in openclaw.json, skipping Matrix re-login"
+    fi
+    # Clear password from memory
+    MATRIX_PASSWORD=""
+else
+    log "No Matrix password found in MinIO, skipping re-login (E2EE may not work after restart)"
+fi
 
 exec openclaw gateway run --verbose --force

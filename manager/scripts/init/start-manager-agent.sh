@@ -391,6 +391,32 @@ if [ -f "${REGISTRY_FILE}" ]; then
 fi
 
 # ============================================================
+# Ensure Worker Matrix password files exist in MinIO (E2EE fix)
+# Workers need to re-login on restart to get a fresh device_id.
+# Older workers created before this fix won't have the password file.
+# ============================================================
+if [ -f "${REGISTRY_FILE}" ]; then
+    for _wname in $(jq -r '.workers | keys[]' "${REGISTRY_FILE}" 2>/dev/null); do
+        [ -z "${_wname}" ] && continue
+        _creds_file="/data/worker-creds/${_wname}.env"
+        if [ -f "${_creds_file}" ]; then
+            # Check if password file already exists in MinIO
+            if ! mc stat "hiclaw/hiclaw-storage/agents/${_wname}/credentials/matrix/password" > /dev/null 2>&1; then
+                source "${_creds_file}"
+                if [ -n "${WORKER_PASSWORD}" ]; then
+                    _tmp_pw="/tmp/matrix-pw-${_wname}"
+                    echo -n "${WORKER_PASSWORD}" > "${_tmp_pw}"
+                    mc cp "${_tmp_pw}" "hiclaw/hiclaw-storage/agents/${_wname}/credentials/matrix/password" 2>/dev/null \
+                        && log "Worker ${_wname}: wrote Matrix password to MinIO (E2EE re-login fix)" \
+                        || log "Worker ${_wname}: WARNING: failed to write Matrix password to MinIO"
+                    rm -f "${_tmp_pw}"
+                fi
+            fi
+        fi
+    done
+fi
+
+# ============================================================
 # Recreate Worker containers as needed after Manager restart.
 # Manager IP may change on restart; Workers use ExtraHosts pointing to Manager IP,
 # so any worker whose ExtraHosts IP no longer matches must be recreated.

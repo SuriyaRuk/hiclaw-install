@@ -1209,6 +1209,10 @@ should_skip_step() {
             local _env="${HICLAW_ENV_FILE:-${HOME}/hiclaw-manager.env}"
             [ ! -f "${_env}" ] && return 0
             ;;
+        step_minio)
+            [ "${HICLAW_NON_INTERACTIVE}" = "1" ] && return 0
+            [ "${HICLAW_QUICKSTART}" = "1" ] && return 0
+            ;;
         step_volume|step_workspace)
             [ "${HICLAW_NON_INTERACTIVE}" = "1" ] && return 0
             [ "${HICLAW_QUICKSTART}" = "1" ] && return 0

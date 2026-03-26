@@ -471,6 +471,8 @@ msg() {
         "domain.fs_prompt.en") text="File System Domain" ;;
         "domain.console_prompt.zh") text="OpenClaw 控制台域名" ;;
         "domain.console_prompt.en") text="OpenClaw Console Domain" ;;
+        "domain.minio_console_prompt.zh") text="MinIO 控制台域名" ;;
+        "domain.minio_console_prompt.en") text="MinIO Console Domain" ;;
         # --- GitHub Integration ---
         "github.title.zh") text="--- GitHub 集成（可选，按回车跳过）---" ;;
         "github.title.en") text="--- GitHub Integration (optional, press Enter to skip) ---" ;;
@@ -1244,7 +1246,7 @@ clear_step_vars() {
             ;;
         step_domains)
             unset HICLAW_MATRIX_DOMAIN HICLAW_MATRIX_CLIENT_DOMAIN
-            unset HICLAW_AI_GATEWAY_DOMAIN HICLAW_FS_DOMAIN HICLAW_CONSOLE_DOMAIN
+            unset HICLAW_AI_GATEWAY_DOMAIN HICLAW_FS_DOMAIN HICLAW_CONSOLE_DOMAIN HICLAW_MINIO_CONSOLE_DOMAIN
             ;;
         step_github)    unset HICLAW_GITHUB_TOKEN ;;
         step_skills)    unset HICLAW_SKILLS_API_URL ;;
@@ -1721,6 +1723,7 @@ step_domains() {
     prompt HICLAW_AI_GATEWAY_DOMAIN "$(msg domain.gateway_prompt)" "aigw-local.hiclaw.io" || return 0
     prompt HICLAW_FS_DOMAIN "$(msg domain.fs_prompt)" "fs-local.hiclaw.io" || return 0
     prompt HICLAW_CONSOLE_DOMAIN "$(msg domain.console_prompt)" "console-local.hiclaw.io" || return 0
+    prompt HICLAW_MINIO_CONSOLE_DOMAIN "$(msg domain.minio_console_prompt)" "minio-console-local.hiclaw.io" || return 0
     log ""
 }
 
@@ -2100,6 +2103,7 @@ HICLAW_MANAGER_GATEWAY_KEY=${HICLAW_MANAGER_GATEWAY_KEY}
 # File System
 HICLAW_FS_DOMAIN=${HICLAW_FS_DOMAIN}
 HICLAW_CONSOLE_DOMAIN=${HICLAW_CONSOLE_DOMAIN}
+HICLAW_MINIO_CONSOLE_DOMAIN=${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}
 HICLAW_MINIO_USER=${HICLAW_MINIO_USER}
 HICLAW_MINIO_PASSWORD=${HICLAW_MINIO_PASSWORD}
 
@@ -2353,7 +2357,7 @@ EOF
     log "$(msg success.title)"
     log ""
     log "$(msg success.domains_configured)"
-    log "  ${HICLAW_MATRIX_DOMAIN%%:*} ${HICLAW_MATRIX_CLIENT_DOMAIN} ${HICLAW_AI_GATEWAY_DOMAIN} ${HICLAW_FS_DOMAIN} ${HICLAW_CONSOLE_DOMAIN}"
+    log "  ${HICLAW_MATRIX_DOMAIN%%:*} ${HICLAW_MATRIX_CLIENT_DOMAIN} ${HICLAW_AI_GATEWAY_DOMAIN} ${HICLAW_FS_DOMAIN} ${HICLAW_CONSOLE_DOMAIN} ${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}"
     log ""
     local lan_ip
     lan_ip=$(detect_lan_ip)

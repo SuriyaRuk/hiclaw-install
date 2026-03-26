@@ -18,6 +18,7 @@ MATRIX_CLIENT_DOMAIN="${HICLAW_MATRIX_CLIENT_DOMAIN:-matrix-client-local.hiclaw.
 AI_GATEWAY_DOMAIN="${HICLAW_AI_GATEWAY_DOMAIN:-aigw-local.hiclaw.io}"
 FS_DOMAIN="${HICLAW_FS_DOMAIN:-fs-local.hiclaw.io}"
 CONSOLE_DOMAIN="${HICLAW_CONSOLE_DOMAIN:-console-local.hiclaw.io}"
+MINIO_CONSOLE_DOMAIN="${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}"
 
 LLM_PROVIDER="${HICLAW_LLM_PROVIDER:-qwen}"
 LLM_API_URL="${HICLAW_LLM_API_URL:-}"
@@ -103,6 +104,8 @@ if [ ! -f "${SETUP_MARKER}" ]; then
         '{"name":"element-web","type":"static","domain":"127.0.0.1:8088","port":8088,"properties":{},"authN":{"enabled":false}}'
     higress_api POST /v1/service-sources "Registering MinIO service source" \
         '{"name":"minio","type":"static","domain":"127.0.0.1:9000","port":9000,"properties":{},"authN":{"enabled":false}}'
+    higress_api POST /v1/service-sources "Registering MinIO Console service source" \
+        '{"name":"minio-console","type":"static","domain":"127.0.0.1:9001","port":9001,"properties":{},"authN":{"enabled":false}}'
     higress_api POST /v1/service-sources "Registering OpenClaw Console service source" \
         '{"name":"openclaw-console","type":"static","domain":"127.0.0.1:18888","port":18888,"properties":{},"authN":{"enabled":false}}'
 
@@ -113,6 +116,8 @@ if [ ! -f "${SETUP_MARKER}" ]; then
         '{"name":"'"${FS_DOMAIN}"'","enableHttps":"off"}'
     higress_api POST /v1/domains "Creating OpenClaw Console domain" \
         '{"name":"'"${CONSOLE_DOMAIN}"'","enableHttps":"off"}'
+    higress_api POST /v1/domains "Creating MinIO Console domain" \
+        '{"name":"'"${MINIO_CONSOLE_DOMAIN}"'","enableHttps":"off"}'
 
     # 2. Manager Consumer
     higress_api POST /v1/consumers "Creating Manager consumer" \
@@ -130,7 +135,11 @@ if [ ! -f "${SETUP_MARKER}" ]; then
     higress_api POST /v1/routes "Creating HTTP file system route" \
         '{"name":"http-filesystem","domains":["'"${FS_DOMAIN}"'"],"path":{"matchType":"PRE","matchValue":"/"},"services":[{"name":"minio.static","port":9000,"weight":100}]}'
 
-    # 6. OpenClaw Console Route (reverse-proxied via nginx with auto-token injection)
+    # 6. MinIO Console Route
+    higress_api POST /v1/routes "Creating MinIO Console route" \
+        '{"name":"minio-console","domains":["'"${MINIO_CONSOLE_DOMAIN}"'"],"path":{"matchType":"PRE","matchValue":"/"},"services":[{"name":"minio-console.static","port":9001,"weight":100}]}'
+
+    # 7. OpenClaw Console Route (reverse-proxied via nginx with auto-token injection)
     higress_api POST /v1/routes "Creating OpenClaw Console route" \
         '{"name":"openclaw-console","domains":["'"${CONSOLE_DOMAIN}"'"],"path":{"matchType":"PRE","matchValue":"/"},"services":[{"name":"openclaw-console.static","port":18888,"weight":100}]}'
 

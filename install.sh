@@ -2188,13 +2188,9 @@ EOF
         fi
     fi
 
-    # Create the data volume if it doesn't already exist (reuse on reinstall)
-    if ! ${DOCKER_CMD} volume ls -q | grep -q "^${HICLAW_DATA_DIR}$"; then
-        ${DOCKER_CMD} volume create "${HICLAW_DATA_DIR}" > /dev/null
-    fi
-
-    # Data mount: Docker volume
-    DATA_MOUNT_ARGS="-v ${HICLAW_DATA_DIR}:/data"
+    # Create the host data directory for bind mount (replaces Docker volume)
+    mkdir -p "$(pwd)/hiclaw_data"
+    DATA_MOUNT_ARGS="--mount type=bind,source=$(pwd)/hiclaw_data,target=/data"
 
     # Manager workspace mount (always a host directory, defaulting to ~/hiclaw-manager)
     WORKSPACE_MOUNT_ARGS="-v ${HICLAW_WORKSPACE_DIR}:/root/manager-workspace"

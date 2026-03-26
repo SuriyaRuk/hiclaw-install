@@ -737,8 +737,8 @@ msg() {
         "success.tip.en") text="Tip: You can also ask the Manager to configure LLM providers for you in the chat." ;;
         "success.config_file.zh") text="配置文件: %s" ;;
         "success.config_file.en") text="Configuration file: %s" ;;
-        "success.data_volume.zh") text="数据卷:        %s" ;;
-        "success.data_volume.en") text="Data volume:        %s" ;;
+        "success.data_volume.zh") text="数据目录:      %s" ;;
+        "success.data_volume.en") text="Data directory:     %s" ;;
         "success.workspace.zh") text="Manager 工作空间:  %s" ;;
         "success.workspace.en") text="Manager workspace:  %s" ;;
         # --- Worker installation ---
@@ -2449,7 +2449,7 @@ EOF
         log ""
     fi
     log "$(msg success.config_file "${ENV_FILE}")"
-    log "$(msg success.data_volume "${HICLAW_DATA_DIR}")"
+    log "$(msg success.data_volume "$(pwd)/hiclaw_data")"
     log "$(msg success.workspace "${HICLAW_WORKSPACE_DIR}")"
 }
 

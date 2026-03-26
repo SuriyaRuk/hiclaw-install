@@ -947,7 +947,7 @@ setup_minio_console_route() {
     local http_code
     http_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${higress}/session/login" \
         -c "${cookie_file}" -H 'Content-Type: application/json' \
-        -d '{"name":"'"${admin_user}"'","password":"'"${admin_pass}"'"}' 2>/dev/null) || true
+        -d '{"username":"'"${admin_user}"'","password":"'"${admin_pass}"'"}' 2>/dev/null) || true
     if [ "${http_code}" != "200" ]; then
         log "WARNING: Could not login to Higress Console (HTTP ${http_code}), skipping MinIO Console route setup"
         rm -f "${cookie_file}"

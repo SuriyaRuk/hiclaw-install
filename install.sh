@@ -1236,6 +1236,7 @@ clear_step_vars() {
             unset HICLAW_MODEL_REASONING HICLAW_MODEL_VISION
             ;;
         step_admin)   unset HICLAW_ADMIN_USER HICLAW_ADMIN_PASSWORD ;;
+        step_minio)   unset HICLAW_MINIO_USER HICLAW_MINIO_PASSWORD ;;
         step_network) unset HICLAW_LOCAL_ONLY ;;
         step_ports)
             unset HICLAW_PORT_GATEWAY HICLAW_PORT_CONSOLE
@@ -1657,6 +1658,24 @@ step_admin() {
     log ""
 }
 
+step_minio() {
+    log "MinIO Storage Credentials"
+    prompt HICLAW_MINIO_USER "  MinIO username" "${HICLAW_ADMIN_USER:-admin}" || return 0
+    if [ -z "${HICLAW_MINIO_PASSWORD}" ]; then
+        prompt_optional HICLAW_MINIO_PASSWORD "  MinIO password (leave blank to auto-generate)" "true" || return 0
+        if [ -z "${HICLAW_MINIO_PASSWORD}" ]; then
+            HICLAW_MINIO_PASSWORD="minio$(openssl rand -hex 6)"
+            log "  MinIO password auto-generated"
+        fi
+    else
+        log "  MinIO password: (preset)"
+    fi
+    if [ ${#HICLAW_MINIO_PASSWORD} -lt 8 ]; then
+        error "MinIO password must be at least 8 characters (got ${#HICLAW_MINIO_PASSWORD})"
+    fi
+    log ""
+}
+
 step_network() {
     log "$(msg port.local_only.title)"
     echo ""
@@ -1983,7 +2002,7 @@ install_manager() {
     fi
 
     # ── State machine ─────────────────────────────────────────────────────────
-    local _STEPS=( step_lang step_mode step_version step_existing step_llm step_admin step_network \
+    local _STEPS=( step_lang step_mode step_version step_existing step_llm step_admin step_minio step_network \
                    step_ports step_domains step_github step_skills step_volume \
                    step_workspace step_runtime step_e2ee step_docker_proxy step_idle step_hostshare )
     local _STEP_HISTORY=()
@@ -2037,7 +2056,7 @@ install_manager() {
     HICLAW_MANAGER_PASSWORD="${HICLAW_MANAGER_PASSWORD:-$(generate_key)}"
     HICLAW_REGISTRATION_TOKEN="${HICLAW_REGISTRATION_TOKEN:-$(generate_key)}"
     HICLAW_MINIO_USER="${HICLAW_MINIO_USER:-${HICLAW_ADMIN_USER}}"
-    HICLAW_MINIO_PASSWORD="${HICLAW_MINIO_PASSWORD:-${HICLAW_ADMIN_PASSWORD}}"
+    HICLAW_MINIO_PASSWORD="${HICLAW_MINIO_PASSWORD:-minio$(openssl rand -hex 6)}"
     HICLAW_MANAGER_GATEWAY_KEY="${HICLAW_MANAGER_GATEWAY_KEY:-$(generate_key)}"
 
     # Write .env file

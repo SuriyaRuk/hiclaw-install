@@ -2454,10 +2454,13 @@ install_worker() {
         log "$(msg worker.skills_url "${SKILLS_API_URL}")"
     fi
 
+    mkdir -p "$(pwd)/hiclaw_data"
+
     # shellcheck disable=SC2086
     ${DOCKER_CMD} run -d \
         --name "${CONTAINER_NAME}" \
         ${DOCKER_ENV} \
+        --mount type=bind,source="$(pwd)/hiclaw_data",target=/root/hiclaw-fs \
         --restart unless-stopped \
         "${WORKER_IMAGE}"
 

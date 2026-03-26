@@ -2451,6 +2451,10 @@ EOF
     log "$(msg success.config_file "${ENV_FILE}")"
     log "$(msg success.data_volume "$(pwd)/hiclaw_data")"
     log "$(msg success.workspace "${HICLAW_WORKSPACE_DIR}")"
+    log ""
+    log "  MinIO Console: http://${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}:${HICLAW_PORT_GATEWAY}"
+    log "  MinIO Username: ${HICLAW_MINIO_USER}"
+    log "  MinIO Password: ${HICLAW_MINIO_PASSWORD}"
 }
 
 # ============================================================

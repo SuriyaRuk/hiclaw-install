@@ -20,7 +20,7 @@
 #   HICLAW_MATRIX_DOMAIN      Matrix domain        (default: matrix-local.hiclaw.io:18080)
 #   HICLAW_MOUNT_SOCKET       Mount container runtime socket (default: 1)
 #   HICLAW_DATA_DIR           Docker volume name for persistent data (default: hiclaw-data)
-#   HICLAW_WORKSPACE_DIR      Host directory for manager workspace (default: ~/hiclaw-manager)
+#   HICLAW_WORKSPACE_DIR      Host directory for manager workspace (default: <pwd>/hiclaw-manager)
 #   HICLAW_VERSION            Image tag            (default: latest)
 #   HICLAW_REGISTRY           Image registry       (default: auto-detected by timezone)
 #   HICLAW_INSTALL_MANAGER_IMAGE       Override manager image (e.g., local build)
@@ -1800,9 +1800,9 @@ step_workspace() {
     log "$(msg workspace.title)"
     if [ -z "${HICLAW_WORKSPACE_DIR+x}" ]; then
         local _input
-        read -e -p "$(msg workspace.dir_prompt "${HOME}/hiclaw-manager"): " _input
+        read -e -p "$(msg workspace.dir_prompt "$(pwd)/hiclaw-manager"): " _input
         if [ "${_input}" = "b" ]; then STEP_RESULT="back"; return 0; fi
-        HICLAW_WORKSPACE_DIR="${_input:-${HOME}/hiclaw-manager}"
+        HICLAW_WORKSPACE_DIR="${_input:-$(pwd)/hiclaw-manager}"
         export HICLAW_WORKSPACE_DIR
     fi
     HICLAW_WORKSPACE_DIR="$(cd "${HICLAW_WORKSPACE_DIR}" 2>/dev/null && pwd || echo "${HICLAW_WORKSPACE_DIR}")"
@@ -2078,7 +2078,7 @@ install_manager() {
     # Post-machine defaults for any steps that were skipped
     HICLAW_DATA_DIR="${HICLAW_DATA_DIR:-hiclaw-data}"
     if [ -z "${HICLAW_WORKSPACE_DIR+x}" ] || [ -z "${HICLAW_WORKSPACE_DIR}" ]; then
-        HICLAW_WORKSPACE_DIR="${HOME}/hiclaw-manager"
+        HICLAW_WORKSPACE_DIR="$(pwd)/hiclaw-manager"
         export HICLAW_WORKSPACE_DIR
     fi
     HICLAW_WORKSPACE_DIR="$(cd "${HICLAW_WORKSPACE_DIR}" 2>/dev/null && pwd || echo "${HICLAW_WORKSPACE_DIR}")"

@@ -932,6 +932,47 @@ prompt_custom_model_params() {
 # Uses `openclaw gateway health` inside the container to confirm the gateway is running
 # ============================================================
 
+setup_minio_console_route() {
+    local console_port="${HICLAW_PORT_CONSOLE:-18001}"
+    local minio_console_domain="${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}"
+    local admin_user="${HICLAW_ADMIN_USER:-admin}"
+    local admin_pass="${HICLAW_ADMIN_PASSWORD}"
+    local higress="http://127.0.0.1:${console_port}"
+    local cookie_file
+    cookie_file=$(mktemp)
+
+    log "Configuring MinIO Console route in Higress..."
+
+    # Login
+    local http_code
+    http_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${higress}/session/login" \
+        -c "${cookie_file}" -H 'Content-Type: application/json' \
+        -d '{"name":"'"${admin_user}"'","password":"'"${admin_pass}"'"}' 2>/dev/null) || true
+    if [ "${http_code}" != "200" ]; then
+        log "WARNING: Could not login to Higress Console (HTTP ${http_code}), skipping MinIO Console route setup"
+        rm -f "${cookie_file}"
+        return
+    fi
+
+    # Register MinIO Console service source (port 9001)
+    curl -s -o /dev/null -X POST "${higress}/v1/service-sources" \
+        -b "${cookie_file}" -H 'Content-Type: application/json' \
+        -d '{"name":"minio-console","type":"static","domain":"127.0.0.1:9001","port":9001,"properties":{},"authN":{"enabled":false}}' 2>/dev/null || true
+
+    # Create MinIO Console domain
+    curl -s -o /dev/null -X POST "${higress}/v1/domains" \
+        -b "${cookie_file}" -H 'Content-Type: application/json' \
+        -d '{"name":"'"${minio_console_domain}"'","enableHttps":"off"}' 2>/dev/null || true
+
+    # Create MinIO Console route
+    curl -s -o /dev/null -X POST "${higress}/v1/routes" \
+        -b "${cookie_file}" -H 'Content-Type: application/json' \
+        -d '{"name":"minio-console","domains":["'"${minio_console_domain}"'"],"path":{"matchType":"PRE","matchValue":"/"},"services":[{"name":"minio-console.static","port":9001,"weight":100}]}' 2>/dev/null || true
+
+    rm -f "${cookie_file}"
+    log "MinIO Console route configured: http://${minio_console_domain}"
+}
+
 wait_manager_ready() {
     local timeout="${HICLAW_READY_TIMEOUT:-300}"
     local elapsed=0
@@ -2338,6 +2379,9 @@ EOF
 
     # Wait for Matrix server to be ready
     wait_matrix_ready "hiclaw-manager"
+
+    # Configure MinIO Console route via Higress API (from host)
+    setup_minio_console_route
 
     # Post-install verification (non-fatal: warnings only)
     local _verify_script

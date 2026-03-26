@@ -2382,6 +2382,16 @@ EOF
     # Configure MinIO Console route via Higress API (from host)
     setup_minio_console_route
 
+    # Add MinIO Console domain to /etc/hosts if not resolvable via public DNS
+    local _minio_domain="${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}"
+    if ! nslookup "${_minio_domain}" >/dev/null 2>&1; then
+        if ! grep -q "${_minio_domain}" /etc/hosts 2>/dev/null; then
+            echo "127.0.0.1 ${_minio_domain}" | sudo tee -a /etc/hosts >/dev/null \
+                && log "Added ${_minio_domain} to /etc/hosts" \
+                || log "WARNING: Add manually: echo '127.0.0.1 ${_minio_domain}' | sudo tee -a /etc/hosts"
+        fi
+    fi
+
     # Post-install verification (non-fatal: warnings only)
     local _verify_script
     _verify_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/hiclaw-verify.sh"

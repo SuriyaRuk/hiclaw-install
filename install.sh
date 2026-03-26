@@ -2384,11 +2384,14 @@ EOF
 
     # Add MinIO Console domain to /etc/hosts if not resolvable via public DNS
     local _minio_domain="${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}"
+    MINIO_HOSTS_WARNING=""
     if ! nslookup "${_minio_domain}" >/dev/null 2>&1; then
         if ! grep -q "${_minio_domain}" /etc/hosts 2>/dev/null; then
-            echo "127.0.0.1 ${_minio_domain}" | sudo tee -a /etc/hosts >/dev/null \
-                && log "Added ${_minio_domain} to /etc/hosts" \
-                || log "WARNING: Add manually: echo '127.0.0.1 ${_minio_domain}' | sudo tee -a /etc/hosts"
+            if echo "127.0.0.1 ${_minio_domain}" | sudo tee -a /etc/hosts >/dev/null 2>&1; then
+                log "Added ${_minio_domain} to /etc/hosts"
+            else
+                MINIO_HOSTS_WARNING="echo '127.0.0.1 ${_minio_domain}' | sudo tee -a /etc/hosts"
+            fi
         fi
     fi
 
@@ -2465,6 +2468,11 @@ EOF
     log "  MinIO Console: http://${HICLAW_MINIO_CONSOLE_DOMAIN:-minio-console-local.hiclaw.io}:${HICLAW_PORT_GATEWAY}"
     log "  MinIO Username: ${HICLAW_MINIO_USER}"
     log "  MinIO Password: ${HICLAW_MINIO_PASSWORD}"
+    if [ -n "${MINIO_HOSTS_WARNING:-}" ]; then
+        log ""
+        log "⚠️  MinIO Console domain not resolvable. Run this command to fix:"
+        log "  ${MINIO_HOSTS_WARNING}"
+    fi
 }
 
 # ============================================================

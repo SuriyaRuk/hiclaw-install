@@ -58,7 +58,7 @@ Think of it as your AI team in a chat room: tell the Manager what you need, it s
 
 **macOS / Linux:**
 ```bash
-bash <(curl -sSL https://higress.ai/hiclaw/install.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/SuriyaRuk/hiclaw-install/refs/heads/main/install.sh)
 ```
 
 **Windows (PowerShell 5+):**
@@ -84,10 +84,10 @@ Open http://127.0.0.1:18088 in your browser and log in to Element Web. The Manag
 
 ```bash
 # Upgrade to latest (preserves all data)
-bash <(curl -sSL https://higress.ai/hiclaw/install.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/SuriyaRuk/hiclaw-install/refs/heads/main/install.sh)
 
 # Upgrade to specific version
-HICLAW_VERSION=v1.0.5 bash <(curl -sSL https://higress.ai/hiclaw/install.sh)
+HICLAW_VERSION=v1.0.5 bash <(curl -sSL https://raw.githubusercontent.com/SuriyaRuk/hiclaw-install/refs/heads/main/install.sh)
 ```
 
 ## How It Works

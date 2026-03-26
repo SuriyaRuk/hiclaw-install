@@ -1252,7 +1252,6 @@ should_skip_step() {
             ;;
         step_minio)
             [ "${HICLAW_NON_INTERACTIVE}" = "1" ] && return 0
-            [ "${HICLAW_QUICKSTART}" = "1" ] && return 0
             ;;
         step_volume|step_workspace)
             [ "${HICLAW_NON_INTERACTIVE}" = "1" ] && return 0

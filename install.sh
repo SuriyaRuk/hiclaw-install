@@ -52,7 +52,7 @@ STEP_RESULT=""  # Used by state machine to signal "back" navigation
 # Log all output to file
 # ============================================================
 
-HICLAW_LOG_FILE="${HOME}/hiclaw-install.log"
+HICLAW_LOG_FILE="${PWD}/hiclaw-install.log"
 
 # Redirect all output (stdout and stderr) to both terminal and log file
 exec > >(tee -a "${HICLAW_LOG_FILE}") 2>&1

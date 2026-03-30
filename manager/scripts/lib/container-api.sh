@@ -177,16 +177,16 @@ container_create_worker() {
     local image="${custom_image:-${WORKER_IMAGE}}"
 
     # Determine FS endpoint and network mode:
-    # - External mode (HICLAW_LOCAL_ONLY=0): real DNS via Cloudflare (https, port 443→80)
-    # - Local mode (default): Docker hiclaw-net with internal port 8080
+    # - Real domain (e.g. fs.loved.services): HTTPS via Cloudflare, default bridge network
+    # - Local domain (*-local.hiclaw.io): Docker hiclaw-net with internal port 8080
     local fs_endpoint=""
     local host_config="{}"
-    if [ "${HICLAW_LOCAL_ONLY:-1}" = "0" ]; then
-        fs_endpoint="https://${fs_domain}"
-        host_config="{}"
-    else
+    if [[ "${fs_domain}" == *-local.hiclaw.io ]]; then
         fs_endpoint="http://fs-local.hiclaw.io:8080"
         host_config="{\"NetworkMode\":\"hiclaw-net\"}"
+    else
+        fs_endpoint="https://${fs_domain}"
+        host_config="{}"
     fi
 
     _log "Creating Worker container: ${container_name}"
@@ -401,12 +401,12 @@ container_create_copaw_worker() {
     local custom_image="${5:-}"
     local image="${custom_image:-${COPAW_WORKER_IMAGE}}"
 
-    # Determine FS endpoint and network mode (same logic as container_create_worker)
+    # Determine FS endpoint (same logic as container_create_worker)
     local fs_endpoint=""
-    if [ "${HICLAW_LOCAL_ONLY:-1}" = "0" ]; then
-        fs_endpoint="https://${fs_domain}"
-    else
+    if [[ "${fs_domain}" == *-local.hiclaw.io ]]; then
         fs_endpoint="http://fs-local.hiclaw.io:8080"
+    else
+        fs_endpoint="https://${fs_domain}"
     fi
 
     _log "Creating CoPaw Worker container: ${container_name}"
@@ -462,11 +462,11 @@ container_create_copaw_worker() {
 
     while true; do
         # Build HostConfig:
-        # - External (HICLAW_LOCAL_ONLY=0): default bridge, real DNS via Cloudflare
-        # - Local: hiclaw-net, Docker DNS resolves *-local.hiclaw.io
+        # - Real domain: default bridge, real DNS via Cloudflare
+        # - Local domain (*-local.hiclaw.io): hiclaw-net, Docker DNS
         local host_config
         local _net_mode=""
-        if [ "${HICLAW_LOCAL_ONLY:-1}" != "0" ]; then
+        if [[ "${fs_domain}" == *-local.hiclaw.io ]]; then
             _net_mode="\"NetworkMode\":\"hiclaw-net\","
         fi
         if [ -n "${console_port}" ]; then

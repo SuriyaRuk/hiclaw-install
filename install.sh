@@ -2489,6 +2489,16 @@ install_worker() {
     [ -z "${FS_KEY}" ] && error "$(msg error.fs_key_required)"
     [ -z "${FS_SECRET}" ] && error "$(msg error.fs_secret_required)"
 
+    # Fix FS endpoint for real domains behind Cloudflare (https, no port)
+    # Extract host from FS URL (strip protocol and port)
+    local _fs_host="${FS#*://}"
+    _fs_host="${_fs_host%%:*}"
+    _fs_host="${_fs_host%%/*}"
+    if [[ "${_fs_host}" != *-local.hiclaw.io ]]; then
+        FS="https://${_fs_host}"
+        log "  FS endpoint corrected for external domain: ${FS}"
+    fi
+
     local CONTAINER_NAME="hiclaw-worker-${WORKER_NAME}"
 
     # Handle reset

@@ -176,22 +176,30 @@ container_create_worker() {
     local custom_image="${5:-}"
     local image="${custom_image:-${WORKER_IMAGE}}"
 
-    # Determine FS endpoint and network mode:
-    # - Real domain (e.g. fs.loved.services): HTTPS via Cloudflare, default bridge network
-    # - Local domain (*-local.hiclaw.io): Docker hiclaw-net with internal port 8080
-    local fs_endpoint=""
-    local host_config="{}"
-    if [[ "${fs_domain}" == *-local.hiclaw.io ]]; then
-        fs_endpoint="http://fs-local.hiclaw.io:8080"
-        host_config="{\"NetworkMode\":\"hiclaw-net\"}"
-    else
-        fs_endpoint="https://${fs_domain}"
-        host_config="{}"
+    # Always use hiclaw-net so worker can reach manager gateway on port 8080.
+    # For real domains (not *-local.hiclaw.io), add ExtraHosts to map domain → manager IP.
+    # For local domains, Docker DNS on hiclaw-net handles resolution automatically.
+    local fs_endpoint="http://${fs_domain}:8080"
+    local manager_ip=""
+    local host_config="{\"NetworkMode\":\"hiclaw-net\"}"
+
+    if [[ "${fs_domain}" != *-local.hiclaw.io ]]; then
+        manager_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+        if [ -n "${manager_ip}" ]; then
+            local extra_hosts="\"${fs_domain}:${manager_ip}\""
+            # Also map other real domains to manager IP
+            for _d in "${HICLAW_AI_GATEWAY_DOMAIN%%:*}" "${HICLAW_MATRIX_DOMAIN%%:*}" "${HICLAW_MATRIX_CLIENT_DOMAIN%%:*}"; do
+                [ -n "${_d}" ] && [ "${_d}" != "${fs_domain}" ] && [[ "${_d}" != *-local.hiclaw.io ]] && \
+                    extra_hosts="${extra_hosts},\"${_d}:${manager_ip}\""
+            done
+            host_config="{\"NetworkMode\":\"hiclaw-net\",\"ExtraHosts\":[${extra_hosts}]}"
+        fi
     fi
 
     _log "Creating Worker container: ${container_name}"
     _log "  Image: ${image}"
     _log "  FS endpoint: ${fs_endpoint}"
+    [ -n "${manager_ip}" ] && _log "  ExtraHosts: ${fs_domain} -> ${manager_ip}"
 
     # Pull image if not available locally
     if ! _ensure_image "${image}"; then
@@ -401,17 +409,26 @@ container_create_copaw_worker() {
     local custom_image="${5:-}"
     local image="${custom_image:-${COPAW_WORKER_IMAGE}}"
 
-    # Determine FS endpoint (same logic as container_create_worker)
-    local fs_endpoint=""
-    if [[ "${fs_domain}" == *-local.hiclaw.io ]]; then
-        fs_endpoint="http://fs-local.hiclaw.io:8080"
-    else
-        fs_endpoint="https://${fs_domain}"
+    # FS endpoint and ExtraHosts (same logic as container_create_worker)
+    local fs_endpoint="http://${fs_domain}:8080"
+    local manager_ip=""
+    local _copaw_extra_hosts=""
+
+    if [[ "${fs_domain}" != *-local.hiclaw.io ]]; then
+        manager_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+        if [ -n "${manager_ip}" ]; then
+            _copaw_extra_hosts="\"${fs_domain}:${manager_ip}\""
+            for _d in "${HICLAW_AI_GATEWAY_DOMAIN%%:*}" "${HICLAW_MATRIX_DOMAIN%%:*}" "${HICLAW_MATRIX_CLIENT_DOMAIN%%:*}"; do
+                [ -n "${_d}" ] && [ "${_d}" != "${fs_domain}" ] && [[ "${_d}" != *-local.hiclaw.io ]] && \
+                    _copaw_extra_hosts="${_copaw_extra_hosts},\"${_d}:${manager_ip}\""
+            done
+        fi
     fi
 
     _log "Creating CoPaw Worker container: ${container_name}"
     _log "  Image: ${image}"
     _log "  FS endpoint: ${fs_endpoint}"
+    [ -n "${manager_ip}" ] && _log "  ExtraHosts: ${fs_domain} -> ${manager_ip}"
 
     # Pull image if not available locally
     if ! _ensure_image "${image}"; then
@@ -461,20 +478,14 @@ container_create_copaw_worker() {
     local port_attempt=0
 
     while true; do
-        # Build HostConfig:
-        # - Real domain: default bridge, real DNS via Cloudflare
-        # - Local domain (*-local.hiclaw.io): hiclaw-net, Docker DNS
+        # Build HostConfig: always hiclaw-net, add ExtraHosts for real domains
         local host_config
-        local _net_mode=""
-        if [[ "${fs_domain}" == *-local.hiclaw.io ]]; then
-            _net_mode="\"NetworkMode\":\"hiclaw-net\","
-        fi
+        local _extra=""
+        [ -n "${_copaw_extra_hosts}" ] && _extra=",\"ExtraHosts\":[${_copaw_extra_hosts}]"
         if [ -n "${console_port}" ]; then
-            host_config="{${_net_mode}\"PortBindings\":{\"${console_port}/tcp\":[{\"HostPort\":\"${host_port}\"}]}}"
-        elif [ -n "${_net_mode}" ]; then
-            host_config="{${_net_mode%,}}"
+            host_config="{\"NetworkMode\":\"hiclaw-net\"${_extra},\"PortBindings\":{\"${console_port}/tcp\":[{\"HostPort\":\"${host_port}\"}]}}"
         else
-            host_config="{}"
+            host_config="{\"NetworkMode\":\"hiclaw-net\"${_extra}}"
         fi
 
         local create_payload

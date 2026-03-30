@@ -2489,14 +2489,32 @@ install_worker() {
     [ -z "${FS_KEY}" ] && error "$(msg error.fs_key_required)"
     [ -z "${FS_SECRET}" ] && error "$(msg error.fs_secret_required)"
 
-    # Fix FS endpoint for real domains behind Cloudflare (https, no port)
     # Extract host from FS URL (strip protocol and port)
     local _fs_host="${FS#*://}"
     _fs_host="${_fs_host%%:*}"
     _fs_host="${_fs_host%%/*}"
+
+    # For real domains (not *-local.hiclaw.io), resolve the aigw (manager) IP
+    # and add --add-host so the worker reaches the gateway directly on port 8080
+    local ADD_HOST_ARGS=""
+    local NETWORK_ARGS=""
     if [[ "${_fs_host}" != *-local.hiclaw.io ]]; then
-        FS="https://${_fs_host}"
-        log "  FS endpoint corrected for external domain: ${FS}"
+        # Get manager container IP on hiclaw-net
+        local _manager_ip
+        _manager_ip=$(${DOCKER_CMD} inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' hiclaw-manager 2>/dev/null)
+        if [ -n "${_manager_ip}" ]; then
+            ADD_HOST_ARGS="--add-host ${_fs_host}:${_manager_ip}"
+            # Also map aigw and matrix domains to manager IP
+            local _aigw_host="${HICLAW_AI_GATEWAY_DOMAIN%%:*}"
+            [ -n "${_aigw_host}" ] && [ "${_aigw_host}" != "${_fs_host}" ] && \
+                ADD_HOST_ARGS="${ADD_HOST_ARGS} --add-host ${_aigw_host}:${_manager_ip}"
+            local _matrix_host="${HICLAW_MATRIX_DOMAIN%%:*}"
+            [ -n "${_matrix_host}" ] && [ "${_matrix_host}" != "${_fs_host}" ] && \
+                ADD_HOST_ARGS="${ADD_HOST_ARGS} --add-host ${_matrix_host}:${_manager_ip}"
+            log "  Mapping ${_fs_host} -> ${_manager_ip} (aigw direct)"
+        fi
+        # Join the same network as manager
+        NETWORK_ARGS="--network hiclaw-net"
     fi
 
     local CONTAINER_NAME="hiclaw-worker-${WORKER_NAME}"
@@ -2534,6 +2552,8 @@ install_worker() {
     ${DOCKER_CMD} run -d \
         --name "${CONTAINER_NAME}" \
         ${DOCKER_ENV} \
+        ${ADD_HOST_ARGS} \
+        ${NETWORK_ARGS} \
         --restart unless-stopped \
         "${WORKER_IMAGE}"
 

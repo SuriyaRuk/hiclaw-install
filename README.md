@@ -216,6 +216,23 @@ docker exec -it hiclaw-manager cat /var/log/hiclaw/manager-agent.log
 
 See [docs/zh-cn/faq.md](docs/zh-cn/faq.md) for common issues.
 
+### Hotfix: Workers can't connect to MinIO (custom domains)
+
+If you use real domains (e.g., `fs.loved.services`) instead of the default `*-local.hiclaw.io`, Workers may fail with:
+
+```
+mc.bin: <ERROR> Unable to stat source ... The specified bucket does not exist.
+```
+
+Apply this hotfix to patch the running manager container:
+
+```bash
+curl -sL https://raw.githubusercontent.com/SuriyaRuk/hiclaw-install/main/manager/scripts/lib/container-api.sh \
+  | docker exec -i hiclaw-manager tee /opt/hiclaw/scripts/lib/container-api.sh > /dev/null
+```
+
+Then recreate your Workers. The patched `container-api.sh` adds `ExtraHosts` so Workers can resolve custom domains to the manager's Higress gateway.
+
 ### Reporting Bugs
 
 Export your Matrix message logs and let an AI tool analyze them against the codebase before filing an issue — this helps us fix bugs much faster.
